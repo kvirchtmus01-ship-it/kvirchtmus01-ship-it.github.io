@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Шаги → Пианино</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background: linear-gradient(135deg, #e0f7fa, #f8bbd0);
+      margin: 0;
+    }
+    h1 {
+      color: #333;
+      font-size: 28px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 16px 32px;
+      font-size: 18px;
+      margin: 20px;
+      border: none;
+      border-radius: 12px;
+      background: #6a11cb;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      transition: transform 0.1s;
+    }
+    button:hover {
+      background: #4a00e0;
+    }
+    button:active {
+      transform: scale(0.98);
+    }
+    #status {
+      font-size: 18px;
+      color: #2c3e50;
+      background: rgba(255,255,255,0.7);
+      padding: 12px 20px;
+      border-radius: 10px;
+      display: inline-block;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>🚶‍♂️ Шаги → Пианино</h1>
+  <button id="start">Разрешить доступ к датчикам</button>
+  <div id="status">Жди шагов...</div>
+
+  <script>
+    // Имена файлов нот (должны лежать в той же папке)
+    const noteFiles = [
+      'c4.mp3',
+      'd4.mp3',
+      'e4.mp3',
+      'f4.mp3',
+      'g4.mp3',
+      'a4.mp3',
+      'b4.mp3'
+    ];
+    let currentNoteIndex = 0;
+    let lastStepTime = 0;
+    const STEP_THRESHOLD = 12;
+    const MIN_STEP_INTERVAL = 300;
+
+    function playNote(filename) {
+      const audio = new Audio(filename);
+      audio.volume = 0.7;
+      audio.play().catch(e => {
+        console.log("Браузер заблокировал звук:", e);
+        document.getElementById('status').innerText = "Нажми на экран, чтобы разблокировать звук!";
+      });
+    }
+
+    function handleMotion(event) {
+      const now = Date.now();
+      if (now - lastStepTime < MIN_STEP_INTERVAL) return;
+
+      const acc = event.accelerationIncludingGravity;
+      if (!acc) return;
+
+      const force = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
+      
+      if (force > STEP_THRESHOLD) {
+        const note = noteFiles[currentNoteIndex % noteFiles.length];
+        playNote(note);
+        document.getElementById('status').innerText = `🎹 Шаг! Нота: ${note.replace('.mp3', '')}`;
+        currentNoteIndex++;
+        lastStepTime = now;
+      }
+    }
+
+    document.getElementById('start').onclick = async () => {
+      try {
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+          const permission = await DeviceMotionEvent.requestPermission();
+          if (permission !== 'granted') throw new Error('Доступ к датчикам запрещён');
+        }
+        window.addEventListener('devicemotion', handleMotion);
+        document.getElementById('status').innerText = '✅ Готово! Иди — и играй на пианино!';
+      } catch (err) {
+        document.getElementById('status').innerText = '❌ ' + err.message;
+        console.error(err);
+      }
+    };
+  </script>
+</body>
+</html>
